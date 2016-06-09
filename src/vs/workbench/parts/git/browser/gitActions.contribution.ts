@@ -397,9 +397,7 @@ export abstract class BaseStageRangesAction extends baseeditor.EditorInputAction
 		return stageranges.getSelectedChanges(changes, selections).length > 0;
 	}
 
-	protected getRangesAppliedResult(editor: editorbrowser.IDiffEditor) {
-		return stageranges.stageRanges(editor);
-	}
+	protected abstract getRangesAppliedResult(editor: editorbrowser.IDiffEditor);
 
 	public run():TPromise<any> {
 		var result = this.getRangesAppliedResult(this.editor);
@@ -438,6 +436,10 @@ export class StageRangesAction extends BaseStageRangesAction {
 
 	constructor(editor:tdeditor.TextDiffEditor, @IGitService gitService: IGitService, @IWorkbenchEditorService editorService : IWorkbenchEditorService) {
 		super(StageRangesAction.ID, StageRangesAction.LABEL, editor, gitService, editorService);
+	}
+
+	protected getRangesAppliedResult(editor: editorbrowser.IDiffEditor) {
+		return stageranges.stageRanges(editor);
 	}
 }
 
