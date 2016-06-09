@@ -251,6 +251,7 @@ export class WorkbenchStageAction extends BaseStageAction {
 	static ID = 'workbench.action.git.stage';
 	static LABEL = nls.localize('workbenchStage', "Stage");
 	private contextService: IWorkspaceContextService;
+	private hasSelectedRange: boolean = false;
 
 	constructor(
 		id = WorkbenchStageAction.ID,
@@ -282,10 +283,17 @@ export class WorkbenchStageAction extends BaseStageAction {
 			return false;
 		}
 
+		this.hasSelectedRange = BaseStageRangesAction.hasSelection(editor);
+
 		return true;
 	}
 
 	run(context?: any): TPromise<void> {
+		if (this.hasSelectedRange) {
+			let stageRangesAction = new StageRangesAction(this.editorService.getActiveEditor(), this.gitService, this.editorService);
+			return stageRangesAction.run();
+		}
+
 		const input = this.editorService.getActiveEditor().input;
 		let fileStatus: IFileStatus;
 
@@ -309,6 +317,7 @@ export class WorkbenchUnstageAction extends BaseUnstageAction {
 	static ID = 'workbench.action.git.unstage';
 	static LABEL = nls.localize('workbenchUnstage', "Unstage");
 	private contextService: IWorkspaceContextService;
+	private hasSelectedRange: boolean = false;
 
 	constructor(
 		id = WorkbenchUnstageAction.ID,
@@ -340,10 +349,17 @@ export class WorkbenchUnstageAction extends BaseUnstageAction {
 			return false;
 		}
 
+		this.hasSelectedRange = BaseStageRangesAction.hasSelection(<baseeditor.BaseEditor>editor);
+
 		return true;
 	}
 
 	run(context?: any): TPromise<void> {
+		if (this.hasSelectedRange) {
+			let unstageRangesAction = new UnstageRangesAction(this.editorService.getActiveEditor(), this.gitService, this.editorService);
+			return unstageRangesAction.run();
+		}
+
 		const input = this.editorService.getActiveEditor().input;
 		let fileStatus: IFileStatus;
 
@@ -367,7 +383,13 @@ export abstract class BaseStageRangesAction extends baseeditor.EditorInputAction
 	private editorService: IWorkbenchEditorService;
 	private editor:editorbrowser.IDiffEditor;
 
-	constructor(id: string, label: string, editor:tdeditor.TextDiffEditor, @IGitService gitService: IGitService, @IWorkbenchEditorService editorService : IWorkbenchEditorService) {
+	constructor(
+		id: string,
+		label: string,
+		editor:tdeditor.TextDiffEditor,
+		@IGitService gitService: IGitService,
+		@IWorkbenchEditorService editorService : IWorkbenchEditorService
+	) {
 		super(id, label);
 
 		this.editorService = editorService;
@@ -376,6 +398,17 @@ export abstract class BaseStageRangesAction extends baseeditor.EditorInputAction
 		this.editor.onDidChangeCursorSelection(() => this.updateEnablement());
 		this.editor.onDidUpdateDiff(() => this.updateEnablement());
 		this.class = 'git-action stage-ranges';
+	}
+
+	public static hasSelection(editor: editorcommon.IEditor): boolean {
+		let changes = editor.getLineChanges();
+		let selections = editor.getSelections();
+
+		if (!changes || !selections || selections.length === 0) {
+			return false;
+		}
+
+		return stageranges.getSelectedChanges(changes, selections).length > 0;
 	}
 
 	public isEnabled():boolean {
@@ -387,14 +420,7 @@ export abstract class BaseStageRangesAction extends baseeditor.EditorInputAction
 			return false;
 		}
 
-		var changes = this.editor.getLineChanges();
-		var selections = this.editor.getSelections();
-
-		if (!changes || !selections || selections.length === 0) {
-			return false;
-		}
-
-		return stageranges.getSelectedChanges(changes, selections).length > 0;
+		return BaseStageRangesAction.hasSelection(this.editor);
 	}
 
 	protected abstract getRangesAppliedResult(editor: editorbrowser.IDiffEditor);
